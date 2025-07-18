@@ -1,0 +1,122 @@
+version: '3.7'
+
+volumes:
+  orderer-data:
+  peer-data:
+  ca-data:
+
+networks:
+  fabric-network:
+
+services:
+  # Certificate Authority
+  ca.ibn.ictu.edu.vn:
+    image: hyperledger/fabric-ca:latest
+    container_name: ca.ibn.ictu.edu.vn
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca.ibn.ictu.edu.vn
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7054
+    ports:
+      - "7054:7054"
+    command: sh -c 'fabric-ca-server start -b admin:adminpw -d'
+    volumes:
+      - ca-data:/etc/hyperledger/fabric-ca-server
+    networks:
+      - fabric-network
+
+  # Orderer
+  orderer.ictu.edu.vn:
+    image: hyperledger/fabric-orderer:latest
+    container_name: orderer.ictu.edu.vn
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_LISTENPORT=7050
+      - ORDERER_GENERAL_LOCALMSPID=OrdererMSP
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_GENERAL_BOOTSTRAPMETHOD=none
+      - ORDERER_CHANNELPARTICIPATION_ENABLED=true
+      - ORDERER_ADMIN_TLS_ENABLED=true
+      - ORDERER_ADMIN_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_ADMIN_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_ADMIN_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_TLS_CLIENTROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+      - ORDERER_ADMIN_LISTENADDRESS=0.0.0.0:7053
+    command: orderer
+    volumes:
+      - ./crypto-config/ordererOrganizations/ictu.edu.vn/orderers/orderer.ictu.edu.vn/msp:/var/hyperledger/orderer/msp
+      - ./crypto-config/ordererOrganizations/ictu.edu.vn/orderers/orderer.ictu.edu.vn/tls:/var/hyperledger/orderer/tls
+      - orderer-data:/var/hyperledger/production/orderer
+    ports:
+      - "7050:7050"
+      - "7053:7053"
+    networks:
+      - fabric-network
+    depends_on:
+      - ca.ibn.ictu.edu.vn
+
+  # Peer
+  peer0.ibn.ictu.edu.vn:
+    image: hyperledger/fabric-peer:latest
+    container_name: peer0.ibn.ictu.edu.vn
+    environment:
+      - CORE_PEER_ID=peer0.ibn.ictu.edu.vn
+      - CORE_PEER_ADDRESS=peer0.ibn.ictu.edu.vn:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - CORE_PEER_CHAINCODEADDRESS=peer0.ibn.ictu.edu.vn:7052
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.ibn.ictu.edu.vn:7051
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.ibn.ictu.edu.vn:7051
+      - CORE_PEER_LOCALMSPID=IbnMSP
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/msp
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_CHAINCODE_EXECUTETIMEOUT=300s
+    volumes:
+      - ./crypto-config/peerOrganizations/ibn.ictu.edu.vn/peers/peer0.ibn.ictu.edu.vn/msp:/etc/hyperledger/fabric/msp
+      - ./crypto-config/peerOrganizations/ibn.ictu.edu.vn/peers/peer0.ibn.ictu.edu.vn/tls:/etc/hyperledger/fabric/tls
+      - peer-data:/var/hyperledger/production
+      - /var/run/docker.sock:/host/var/run/docker.sock
+    command: peer node start
+    ports:
+      - "7051:7051"
+    networks:
+      - fabric-network
+    depends_on:
+      - orderer.ictu.edu.vn
+
+  # CLI
+  cli:
+    image: hyperledger/fabric-tools:latest
+    container_name: cli
+    tty: true
+    stdin_open: true
+    environment:
+      - GOPATH=/opt/gopath
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.ibn.ictu.edu.vn:7051
+      - CORE_PEER_LOCALMSPID=IbnMSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/ibn.ictu.edu.vn/peers/peer0.ibn.ictu.edu.vn/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/ibn.ictu.edu.vn/peers/peer0.ibn.ictu.edu.vn/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/ibn.ictu.edu.vn/peers/peer0.ibn.ictu.edu.vn/tls/ca.crt
+      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/ibn.ictu.edu.vn/users/Admin@ibn.ictu.edu.vn/msp
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+      - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
+      - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
+      - ./config:/opt/gopath/src/github.com/hyperledger/fabric/peer/config/
+    networks:
+      - fabric-network
+    depends_on:
+      - orderer.ictu.edu.vn
+      - peer0.ibn.ictu.edu.vn

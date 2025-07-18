@@ -1,0 +1,43 @@
+# Hyperledger Fabric
+crypto-config/
+config/artifacts/
+*.tar.gz
+*.block
+*.tx
+
+# Docker
+.env
+docker-compose.override.yml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node.js (nếu có)
+node_modules/
+npm-debug.log*
+
+# Go
+vendor/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Temporary files
+*.tmp
+*.temp
+*~ 

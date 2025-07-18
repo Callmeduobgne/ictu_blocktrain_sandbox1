@@ -1,0 +1,19 @@
+OrdererOrgs:
+  - Name: Orderer
+    Domain: ictu.edu.vn
+    EnableNodeOUs: false
+    Specs:
+      - Hostname: orderer
+        SANS:
+          - localhost
+
+PeerOrgs:
+  - Name: Ibn
+    Domain: ibn.ictu.edu.vn
+    EnableNodeOUs: true
+    Template:
+      Count: 1
+      SANS:
+        - localhost
+    Users:
+      Count: 1
